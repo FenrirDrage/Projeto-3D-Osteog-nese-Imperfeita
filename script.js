@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // Corrigido para a importação correta
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // Certifique-se que este caminho está correto
 
 // Cena
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb); // Cor de fundo (céu azul claro)
+scene.background = new THREE.Color(0x87ceeb); // Céu azul claro
 
 // Câmara
 const camera = new THREE.PerspectiveCamera(
@@ -12,18 +12,21 @@ const camera = new THREE.PerspectiveCamera(
   0.1, // Distância mínima
   1000 // Distância máxima
 );
-camera.position.set(0, 2, 5); // Posição inicial da câmara
+camera.position.set(0, 2, 15); // Posição inicial da câmera
 
 // Renderer
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement); // Adiciona o canvas ao body
 
+// Controles Orbit
+const controls = new OrbitControls(camera, renderer.domElement);
+
 // Luz ambiente (suave)
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Cor branca, intensidade 0.5
 scene.add(ambientLight);
 
-// Luz direcional (simulando sol)
+// Luz direcional (simulando o sol)
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(5, 10, 5); // Posição da luz direcional
 scene.add(directionalLight);
@@ -40,459 +43,326 @@ scene.add(axesHelper);
 const headGeometry = new THREE.SphereGeometry(0.4, 32, 32); // Tamanho e resolução
 const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Material branco
 const head = new THREE.Mesh(headGeometry, headMaterial);
+head.position.y = 8; // Eleva a cabeça para não ficar no nível do chão
+scene.add(head); // Adiciona a cabeça à cena
 
-// Posicionar a cabeça um pouco acima da coluna
-head.position.set(0, 2.5, 0); // (x: 0, y: 2.5, z: 0)
-scene.add(head);
+// Criação da espinha dorsal com juntas
+const vertebraGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.5, 32); // Cilindro para as vértebras
+const vertebraMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Material cinza
 
-// Coluna Vertebral (Cilindro)
-const spineGeometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 32); // Raio superior, raio inferior, altura, segmentos
-const spineMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Material branco
-const spine = new THREE.Mesh(spineGeometry, spineMaterial);
+const jointGeometry = new THREE.SphereGeometry(0.15, 16, 16); // Esfera para as juntas
+const jointMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Material laranja (juntas)
 
-// Posicionar a coluna na base da cabeça
-spine.position.set(0, 1.5, 0);
-scene.add(spine);
+const spine = new THREE.Group(); // Grupo para conter as vértebras e juntas
 
-// Criar uma esfera para representar a articulação na ponta da clavícula
-const jointGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Esfera com raio de 0.1
-const jointMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para destacar
-const joint = new THREE.Mesh(jointGeometry, jointMaterial);
+// Criar vértebras e juntas
+const numVertebrae = 5; // Número de vértebras
+for (let i = 0; i < numVertebrae; i++) {
+  // Criação da vértebra
+  const vertebra = new THREE.Mesh(vertebraGeometry, vertebraMaterial);
+  vertebra.position.y = 8 - i * 0.7; // Posicionar as vértebras verticalmente
+  spine.add(vertebra);
 
-// Posicionar a esfera de articulação na ponta da clavícula (na posição final das clavículas)
-joint.position.set(0.3, 2.1, 0); // Posição final da clavícula direita
-// Para a clavícula esquerda, alteramos a posição para o lado esquerdo
-const jointLeft = joint.clone();
-jointLeft.position.set(-0.3, 2.1, 0); // Posição final da clavícula esquerda
-
-// Adicionar as esferas de articulação à cena
-scene.add(joint);
-scene.add(jointLeft);
-
-// Clavícula esquerda (ligação entre a escápula esquerda e a coluna)
-const clavicleLeftGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 32); // Cilindro fino
-const clavicleLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const clavicleLeft = new THREE.Mesh(clavicleLeftGeometry, clavicleLeftMaterial);
-
-// Posicionar a clavícula esquerda
-clavicleLeft.position.set(-0.3, 2.1, 0); // Posição à esquerda da escápula
-clavicleLeft.rotation.z = Math.PI / 2; // Inclinação na direção Z
-scene.add(clavicleLeft);
-
-// Clavícula direita (ligação entre a escápula direita e a coluna)
-const clavicleRightGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 32); // Cilindro fino
-const clavicleRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const clavicleRight = new THREE.Mesh(clavicleRightGeometry, clavicleRightMaterial);
-
-// Posicionar a clavícula direita
-clavicleRight.position.set(0.3, 2.1, 0); // Posição à direita da escápula
-clavicleRight.rotation.z = -Math.PI / 2; // Inclinação na direção Z (inverso da esquerda)
-scene.add(clavicleRight);
-
-// Criar a articulação para o úmero esquerdo (onde o úmero se conecta à clavícula esquerda)
-const shoulderJointLeftGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Esfera para a articulação
-const shoulderJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para destacar a articulação
-const shoulderJointLeft = new THREE.Mesh(shoulderJointLeftGeometry, shoulderJointLeftMaterial);
-
-// Posicionar a articulação na ponta do úmero esquerdo (onde se conecta à clavícula)
-shoulderJointLeft.position.set(-0.8, 2.1, 0); // Posição na ponta do úmero esquerdo, na articulação com a clavícula esquerda
-
-// Adicionar a articulação à cena
-scene.add(shoulderJointLeft);
-
-// Criar a articulação para o úmero direito (onde o úmero se conecta à clavícula direita)
-const shoulderJointRightGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Esfera para a articulação
-const shoulderJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para destacar a articulação
-const shoulderJointRight = new THREE.Mesh(shoulderJointRightGeometry, shoulderJointRightMaterial);
-
-// Posicionar a articulação na ponta do úmero direito (onde se conecta à clavícula)
-shoulderJointRight.position.set(0.8, 2.1, 0); // Posição na ponta do úmero direito, na articulação com a clavícula direita
-
-// Adicionar a articulação à cena
-scene.add(shoulderJointRight);
-
-// Criar o úmero esquerdo (ligação da articulação da clavícula esquerda até o cotovelo)
-const humerusLeftGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 32); // Cilindro para o úmero
-const humerusLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const humerusLeft = new THREE.Mesh(humerusLeftGeometry, humerusLeftMaterial);
-
-// Posicionar o úmero esquerdo
-humerusLeft.position.set(-0.8, 1.5, 0); // Posição da clavícula esquerda
-humerusLeft.rotation.z = Math.PI; // Ajuste de rotação para inclinar o úmero para baixo
-
-scene.add(humerusLeft);
-
-// Criar o úmero direito (ligação da articulação da clavícula direita até o cotovelo)
-const humerusRightGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 32); // Cilindro para o úmero
-const humerusRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const humerusRight = new THREE.Mesh(humerusRightGeometry, humerusRightMaterial);
-
-// Posicionar o úmero direito
-humerusRight.position.set(0.8, 1.5, 0); // Posição da clavícula direita
-humerusRight.rotation.z = -Math.PI; // Ajuste de rotação para inclinar o úmero para baixo
-
-scene.add(humerusRight);
-
-// Criar a articulação do cotovelo esquerdo (onde o úmero se conecta ao antebraço)
-const elbowJointLeftGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Esfera para a articulação do cotovelo
-const elbowJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para destacar a articulação
-const elbowJointLeft = new THREE.Mesh(elbowJointLeftGeometry, elbowJointLeftMaterial);
-
-// Posicionar a articulação do cotovelo esquerdo na extremidade do úmero esquerdo
-elbowJointLeft.position.set(-0.8, 0.9, 0); // Ajuste para ficar logo abaixo do ombro, onde o cotovelo deve estar
-
-// Adicionar a articulação à cena
-scene.add(elbowJointLeft);
-
-// Criar a articulação do cotovelo direito (onde o úmero se conecta ao antebraço)
-const elbowJointRightGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Esfera para a articulação do cotovelo
-const elbowJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para destacar a articulação
-const elbowJointRight = new THREE.Mesh(elbowJointRightGeometry, elbowJointRightMaterial);
-
-// Posicionar a articulação do cotovelo direito na extremidade do úmero direito
-elbowJointRight.position.set(0.8, 0.9, 0); // Ajuste para ficar logo abaixo do ombro, onde o cotovelo deve estar
-
-// Adicionar a articulação à cena
-scene.add(elbowJointRight);
-
-// Criar o rádio esquerdo (osso do antebraço, do cotovelo até a mão)
-const radiusLeftGeometry = new THREE.CylinderGeometry(0.1, 0.05, 1, 32); // Cilindro para o rádio
-const radiusLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor marrom para o osso
-const radiusLeft = new THREE.Mesh(radiusLeftGeometry, radiusLeftMaterial);
-
-// Posicionar o rádio esquerdo na extremidade do cotovelo esquerdo
-radiusLeft.position.set(-.8, 0.3, 0); // Posição abaixo do cotovelo esquerdo
-
-// Adicionar o rádio esquerdo à cena
-scene.add(radiusLeft);
-
-// Criar o rádio direito (osso do antebraço, do cotovelo até a mão)
-const radiusRightGeometry = new THREE.CylinderGeometry(0.1, 0.05, 1, 32); // Cilindro para o rádio
-const radiusRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor marrom para o osso
-const radiusRight = new THREE.Mesh(radiusRightGeometry, radiusRightMaterial);
-
-// Posicionar o rádio direito na extremidade do cotovelo direito
-radiusRight.position.set(0.8, 0.3, 0); // Posição abaixo do cotovelo direito
-
-// Adicionar o rádio direito à cena
-scene.add(radiusRight);
-
-// Criar a junta do pulso esquerdo
-const wristLeftGeometry = new THREE.SphereGeometry(0.06, 32, 32); // Esfera para o pulso
-const wristLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffc0cb }); // Cor rosa claro para destaque
-const wristLeft = new THREE.Mesh(wristLeftGeometry, wristLeftMaterial);
-
-// Posicionar a junta do pulso esquerdo
-wristLeft.position.set(-0.8, -0.25, 0); // Alinhado com o final do antebraço esquerdo
-
-// Adicionar à cena
-scene.add(wristLeft);
-
-// Criar a junta do pulso direito
-const wristRightGeometry = new THREE.SphereGeometry(0.06, 32, 32); // Esfera para o pulso
-const wristRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffc0cb }); // Cor rosa claro para destaque
-const wristRight = new THREE.Mesh(wristRightGeometry, wristRightMaterial);
-
-// Posicionar a junta do pulso direito
-wristRight.position.set(0.8, -0.25, 0); // Alinhado com o final do antebraço direito
-
-// Adicionar à cena
-scene.add(wristRight);
-
-// Arrays para armazenar as falange joints das mãos
-const palmLeftJoints = [];
-const palmRightJoints = [];
-
-// Função para criar uma falange joint (articulação da falange) representada por uma esfera
-function createFalangeJoint(position) {
-  const jointGeometry = new THREE.SphereGeometry(0.015, 16, 16); // Geometria de esfera para a joint
-  const jointMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para a joint
-  const joint = new THREE.Mesh(jointGeometry, jointMaterial); // Criar a mesh da joint
-
-  // Definir a posição da falange joint
-  joint.position.set(position.x, position.y, position.z);
-
-  // Adicionar à cena
-  scene.add(joint);
-
-  return joint; // Retornar a joint criada
+  // Criação da junta (exceto na última vértebra)
+  if (i < numVertebrae) {
+    const joint = new THREE.Mesh(jointGeometry, jointMaterial);
+    joint.position.y = 8 - i * 0.7 - 0.35; // Posicionar a junta entre vértebras
+    spine.add(joint);
+  }
 }
 
-// Criar o metacarpo esquerdo (parte superior da mão esquerda)
-const metacarpalLeftGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.2); // Cubo para o metacarpo
-const metacarpalLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const metacarpalLeft = new THREE.Mesh(metacarpalLeftGeometry, metacarpalLeftMaterial);
+// Adicionar a espinha dorsal à cena
+scene.add(spine);
 
-// Posicionar o metacarpo esquerdo
-metacarpalLeft.position.set(-0.8, -0.4, 0); // Um pouco abaixo da palma esquerda
+// Criação do braço
+const armRight = new THREE.Group(); // Grupo para conter todas as partes do braço
 
-// Rotacionar o metacarpo para apontar em direção ao solo
-metacarpalLeft.rotation.x = Math.PI / 2; // 90º no eixo X para ficar perpendicular ao solo
+// Ombro (esfera)
+const shoulderRightGeometry = new THREE.SphereGeometry(0.2, 16, 16); // Tamanho do ombro
+const shoulderRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Cinza
+const shoulderRight = new THREE.Mesh(shoulderRightGeometry, shoulderRightMaterial);
+shoulderRight.position.y = 7.8; // Posição inicial do ombro
+shoulderRight.position.x = -0.7; // Ajustar 위치 para alinhar melhor
+armRight.add(shoulderRight);
 
-// Adicionar à cena
-scene.add(metacarpalLeft);
+// Braço superior (cilindro)
+const upperArmRightGeometry = new THREE.CylinderGeometry(0.2, 0.17, 1, 32); // Braço superior
+const upperArmRightMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const upperArmRight = new THREE.Mesh(upperArmRightGeometry, upperArmRightMaterial);
+upperArmRight.position.y = 7.33; // Posicionar o braço abaixo do ombro
+upperArmRight.rotation.z = Math.PI / 4; // Inclinação de 45 graus para conectar ao ombro/espinha
+upperArmRight.position.x = -0.23 // Ajustar posição para alinhar melhor
+armRight.add(upperArmRight);
 
-// Criar joints para o metacarpo esquerdo (5 joints para os dedos)
-const jointPositionsLeft = [
-    { x: -0.72, y: -0.505, z: 0 }, // Base do dedo indicador
-    { x: -0.77, y: -0.505, z: 0 }, // Base do dedo médio
-    { x: -0.82, y: -0.505, z: 0 }, // Base do dedo anelar
-    { x: -0.87, y: -0.505, z: 0 }, // Base do dedo mínimo
-    { x: -0.69, y: -0.35, z: 0 }   // Dedo polegar
-];
+// Junta do cotovelo (esfera)
+const elbowJointRightGeometry = new THREE.SphereGeometry(0.15, 16, 16); // Cotovelo
+const elbowJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const elbowJointRight = new THREE.Mesh(elbowJointRightGeometry, elbowJointRightMaterial);
+elbowJointRight.position.y = 6.88; // Posicionar no final do braço superior
+elbowJointRight.position.x = 0.22 // Ajustar posição para alinhar melhor
+armRight.add(elbowJointRight);
 
-// Criar falange joints para a mão esquerda
-jointPositionsLeft.forEach(position => {
-  const falangeJoint = createFalangeJoint(position); // Criar falange joint para cada posição
-  palmLeftJoints.push(falangeJoint); // Adicionar à lista de joints
-});
+// Antebraço (cilindro)
+const forearmRightGeometry = new THREE.CylinderGeometry(0.15, 0.1, 1, 32); // Antebraço
+const forearmRightMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const forearmRight = new THREE.Mesh(forearmRightGeometry, forearmRightMaterial);
+forearmRight.position.y = 6.25; // Posicionar o antebraço abaixo do cotovelo
+forearmRight.position.x = 0.25; // Ajustar 위치 para alinhar melhor
+armRight.add(forearmRight);
 
-// Definir posições das falanges para a mão esquerda
-const leftFingersPositions = {
-  thumb: [
-      { x: -0.69, y: -0.35, z: 0 },  // Base do polegar
-      { x: -0.65, y: -0.50, z: 0 },  // Falange distal do polegar
-  ],
-  index: [
-      { x: -0.72, y: -0.505, z: 0 },  // Base do dedo indicador
-      { x: -0.72, y: -0.65, z: 0 },  // Falange distal do indicador
-      { x: -0.72, y: -0.80, z: 0 },  // Falange distal do indicador
-  ],
-  middle: [
-      { x: -0.77, y: -0.505, z: 0 },  // Base do dedo médio
-      { x: -0.77, y: -0.65, z: 0 },  // Falange distal do médio
-      { x: -0.77, y: -0.80, z: 0 },  // Falange distal do médio
-  ],
-  ring: [
-      { x: -0.82, y: -0.505, z: 0 },  // Base do dedo anelar
-      { x: -0.82, y: -0.65, z: 0 },  // Falange distal do anelar
-      { x: -0.82, y: -0.80, z: 0 },  // Falange distal do anelar
-  ],
-  pinky: [
-      { x: -0.87, y: -0.505, z: 0 },  // Base do dedo mínimo
-      { x: -0.87, y: -0.65, z: 0 },  // Falange distal do mínimo
-      { x: -0.87, y: -0.80, z: 0 },  // Falange distal do mínimo
-  ]
-};
+// Junta do pulso (esfera)
+const wristJointRightGeometry = new THREE.SphereGeometry(0.15, 16, 16); // Pulso
+const wristJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const wristJointRight = new THREE.Mesh(wristJointRightGeometry, wristJointRightMaterial);
+wristJointRight.position.y = 5.6; // Posicionar no final do antebraço
+wristJointRight.position.x = 0.25; // Ajustar 위치 para alinhar melhor
+armRight.add(wristJointRight);
 
-// Criar o metacarpo direito (parte superior da mão direita)
-const metacarpalRightGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.2); // Cubo para o metacarpo
-const metacarpalRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const metacarpalRight = new THREE.Mesh(metacarpalRightGeometry, metacarpalRightMaterial);
+// Mão (caixa ou cubo)
+const handGeometryRight = new THREE.BoxGeometry(0.4, 0.6, 0.4); // Mão
+const handMaterialRight = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const handRight = new THREE.Mesh(handGeometryRight, handMaterialRight);
+handRight.position.y = 5.2; // Posicionar a mão abaixo do pulso
+handRight.position.x = 0.25; // Ajustar 위치 para alinhar melhor
+armRight.add(handRight);
 
-// Posicionar o metacarpo direito
-metacarpalRight.position.set(0.8, -0.4, 0); // Um pouco abaixo da palma direita
+// Ajustar a posição do braço na cena
+armRight.position.set(1, -0.5, 0); // Posição ajustada no eixo X e Y (lado direito da espinha)
 
-// Rotacionar o metacarpo para apontar em direção ao solo
-metacarpalRight.rotation.x = Math.PI / 2; // 90º no eixo X para ficar perpendicular ao solo
+// Adicionar o braço à cena
+scene.add(armRight);
 
-// Adicionar à cena
-scene.add(metacarpalRight);
+// Criação do braço esquerdo
+const armLeft = new THREE.Group(); // Grupo para conter todas as partes do braço esquerdo
 
-// Criar joints para o metacarpo direito (5 joints para os dedos)
-const jointPositionsRight = [
-    { x: 0.72, y: -0.505, z: 0 },  // Base do dedo indicador
-    { x: 0.77, y: -0.505, z: 0 },  // Base do dedo médio
-    { x: 0.82, y: -0.505, z: 0 },  // Base do dedo anelar
-    { x: 0.87, y: -0.505, z: 0 },  // Base do dedo mínimo
-    { x: 0.69, y: -0.35, z: 0 }   // Dedo polegar
-];
+// Ombro (esfera)
+const shoulderLeftGeometry = new THREE.SphereGeometry(0.2, 16, 16); // Tamanho do ombro
+const shoulderLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Cinza
+const shoulderLeft = new THREE.Mesh(shoulderLeftGeometry, shoulderLeftMaterial);
+shoulderLeft.position.y = 7.8; // Posição inicial do ombro
+shoulderLeft.position.x = 0.7; // Ajustar posição para alinhar melhor
+armLeft.add(shoulderLeft);
 
-// Criar falange joints para a mão direita
-jointPositionsRight.forEach(position => {
-  const falangeJoint = createFalangeJoint(position); // Criar falange joint para cada posição
-  palmRightJoints.push(falangeJoint); // Adicionar à lista de joints
-});
+// Braço superior (cilindro)
+const upperArmLeftGeometry = new THREE.CylinderGeometry(0.2, 0.17, 1, 32); // Braço superior
+const upperArmLeftMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const upperArmLeft = new THREE.Mesh(upperArmLeftGeometry, upperArmLeftMaterial);
+upperArmLeft.position.y = 7.33; // Posicionar o braço abaixo do ombro
+upperArmLeft.rotation.z = -Math.PI / 4; // Inclinação de -45 graus para conectar ao ombro/espinha
+upperArmLeft.position.x = 0.23; // Ajustar posição para alinhar melhor
+armLeft.add(upperArmLeft);
 
-//Parte de baixo
+// Junta do cotovelo (esfera)
+const elbowJointLeftGeometry = new THREE.SphereGeometry(0.15, 16, 16); // Cotovelo
+const elbowJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const elbowJointLeft = new THREE.Mesh(elbowJointLeftGeometry, elbowJointLeftMaterial);
+elbowJointLeft.position.y = 6.88; // Posicionar no final do braço superior
+elbowJointLeft.position.x = -0.22; // Ajustar posição para alinhar melhor
+armLeft.add(elbowJointLeft);
 
-// Criar a pélvis (toróide)
-const pelvisGeometry = new THREE.TorusGeometry(0.3, 0.1, 3, 20); // Toróide para a pélvis
-const pelvisMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // Cor marrom para o osso
+// Antebraço (cilindro)
+const forearmLeftGeometry = new THREE.CylinderGeometry(0.15, 0.1, 1, 32); // Antebraço
+const forearmLeftMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const forearmLeft = new THREE.Mesh(forearmLeftGeometry, forearmLeftMaterial);
+forearmLeft.position.y = 6.25; // Posicionar o antebraço abaixo do cotovelo
+forearmLeft.position.x = -0.25; // Ajustar posição para alinhar melhor
+armLeft.add(forearmLeft);
+
+// Junta do pulso (esfera)
+const wristJointLeftGeometry = new THREE.SphereGeometry(0.15, 16, 16); // Pulso
+const wristJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const wristJointLeft = new THREE.Mesh(wristJointLeftGeometry, wristJointLeftMaterial);
+wristJointLeft.position.y = 5.6; // Posicionar no final do antebraço
+wristJointLeft.position.x = -0.25; // Ajustar posição para alinhar melhor
+armLeft.add(wristJointLeft);
+
+// Mão (caixa ou cubo)
+const handLeftGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.4); // Mão
+const handLeftMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const handLeft = new THREE.Mesh(handLeftGeometry, handLeftMaterial);
+handLeft.position.y = 5.2; // Posicionar a mão abaixo do pulso
+handLeft.position.x = -0.25; // Ajustar posição para alinhar melhor
+armLeft.add(handLeft);
+
+// Ajustar a posição do braço esquerdo na cena
+armLeft.position.set(-1, -0.5, 0); // Posição ajustada no eixo X e Y (lado esquerdo da espinha)
+
+// Adicionar o braço esquerdo à cena
+scene.add(armLeft);
+
+// Pélvis
+const pelvisGeometry = new THREE.TorusGeometry(0.5, 0.2, 16, 100); // Torus (anel)
+const pelvisMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Material cinza
 const pelvis = new THREE.Mesh(pelvisGeometry, pelvisMaterial);
 
-// Posicionar a pélvis no centro do corpo
-pelvis.position.set(0, 0.3, 0); // Posicionar um pouco abaixo da coluna vertebral
-pelvis.rotation.x = Math.PI / -6; // Rotacionar a pélvis para ficar na horizontal
+// Ajustar posição e orientação da pélvis
+pelvis.position.y = 4.6; // Posição no eixo Y (abaixo da espinha)
+pelvis.rotation.x = Math.PI / 2; // Girar para alinhar horizontalmente
 
 // Adicionar a pélvis à cena
 scene.add(pelvis);
 
-// Criar a articulação da pélvis esquerda (onde a pélvis se conecta ao fêmur esquerdo)
-const pelvisJointLeftGeometry = new THREE.SphereGeometry(0.15, 32, 32); // Esfera para a articulação
-const pelvisJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para destacar a articulação
-const pelvisJointLeft = new THREE.Mesh(pelvisJointLeftGeometry, pelvisJointLeftMaterial);
+// Criação da perna
+const legLeft = new THREE.Group(); // Grupo para conter todas as partes da perna
 
-// Posicionar a articulação da pélvis esquerda nas extremidades da pélvis
-pelvisJointLeft.position.set(-0.35, 0.08, -0.05); // Ajuste para a posição da pélvis esquerda
+// Junta da anca (esfera)
+const hipJointLeftGeometry = new THREE.SphereGeometry(0.2, 16, 16); // Tamanho da anca
+const hipJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const hipJointLeft = new THREE.Mesh(hipJointLeftGeometry, hipJointLeftMaterial);
+hipJointLeft.position.y = 4.3; // Posição inicial da junta da anca
+hipJointLeft.position.x = -0.6; // Ajustar para o lado esquerdo (perna esquerda)
+legLeft.add(hipJointLeft);
 
-// Adicionar a articulação à cena
-scene.add(pelvisJointLeft);
-
-// Criar a articulação da pélvis direita (onde a pélvis se conecta ao fêmur direito)
-const pelvisJointRightGeometry = new THREE.SphereGeometry(0.15, 32, 32); // Esfera para a articulação
-const pelvisJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Cor vermelha para destacar a articulação
-const pelvisJointRight = new THREE.Mesh(pelvisJointRightGeometry, pelvisJointRightMaterial);
-
-// Posicionar a articulação da pélvis direita nas extremidades da pélvis
-pelvisJointRight.position.set(0.35, 0.08, -0.05); // Ajuste para a posição da pélvis direita
-
-// Adicionar a articulação à cena
-scene.add(pelvisJointRight);
-
-// Criar o fêmur esquerdo (da articulação da pélvis até o joelho)
-const femurLeftGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.8, 32); // Cilindro reto para o fêmur
-const femurLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor branca para o osso
+// Fêmur (cilindro)
+const femurLeftGeometry = new THREE.CylinderGeometry(0.15, 0.12, 1.5, 32); // Fêmur
+const femurLeftMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
 const femurLeft = new THREE.Mesh(femurLeftGeometry, femurLeftMaterial);
+femurLeft.position.y = 3.4; // Posicionar o fêmur abaixo da junta da anca
+femurLeft.position.x = -0.6; // Manter alinhado com a junta
+legLeft.add(femurLeft);
 
-// Posicionar o fêmur esquerdo
-femurLeft.position.set(-0.35, -0.95, 0); // Ajustar a posição inicial do fêmur esquerdo
+// Junta do joelho (esfera)
+const kneeJointLeftGeometry = new THREE.SphereGeometry(0.2, 16, 16); // Tamanho do joelho
+const kneeJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const kneeLeftJoint = new THREE.Mesh(kneeJointLeftGeometry, kneeJointLeftMaterial);
+kneeLeftJoint.position.y = 2.65; // Posição do joelho abaixo do fêmur
+kneeLeftJoint.position.x = -0.6; // Alinhar com o fêmur
+legLeft.add(kneeLeftJoint);
 
-// Adicionar o fêmur esquerdo à cena
-scene.add(femurLeft);
-
-
-// Criar o fêmur direito (da articulação da pélvis até o joelho)
-const femurRightGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.8, 32); // Cilindro reto para o fêmur
-const femurRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor branca para o osso
-const femurRight = new THREE.Mesh(femurRightGeometry, femurRightMaterial);
-
-// Posicionar o fêmur direito
-femurRight.position.set(0.35, -0.95, 0); // Ajustar a posição inicial do fêmur direito
-
-// Adicionar o fêmur direito à cena
-scene.add(femurRight);
-
-// Criar a junta do joelho esquerdo
-const kneeLeftGeometry = new THREE.SphereGeometry(0.15, 32, 32); // Esfera pequena para a articulação
-const kneeLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffc0cb }); // Cor rosa claro para destaque
-const kneeLeft = new THREE.Mesh(kneeLeftGeometry, kneeLeftMaterial);
-
-// Posicionar a junta do joelho esquerdo
-kneeLeft.position.set(-0.35, -1.95, 0); // Alinhado com o final do fêmur esquerdo
-
-// Adicionar à cena
-scene.add(kneeLeft);
-
-
-// Criar a junta do joelho direito
-const kneeRightGeometry = new THREE.SphereGeometry(0.15, 32, 32); // Esfera pequena para a articulação
-const kneeRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffc0cb }); // Cor rosa claro para destaque
-const kneeRight = new THREE.Mesh(kneeRightGeometry, kneeRightMaterial);
-
-// Posicionar a junta do joelho direito
-kneeRight.position.set(0.35, -1.95, 0); // Alinhado com o final do fêmur direito
-
-// Adicionar à cena
-scene.add(kneeRight);
-
-// Criar a tíbia esquerda (da junta do joelho esquerdo até o tornozelo)
-const tibiaLeftGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 32); // Cilindro reto para a tíbia
-const tibiaLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor branca para o osso
+// Tíbia (canela - cilindro)
+const tibiaLeftGeometry = new THREE.CylinderGeometry(0.12, 0.1, 1.5, 32); // Tíbia
+const tibiaLeftMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
 const tibiaLeft = new THREE.Mesh(tibiaLeftGeometry, tibiaLeftMaterial);
+tibiaLeft.position.y = 1.85; // Posicionar a tíbia abaixo do joelho
+tibiaLeft.position.x = -0.6; // Alinhar com o joelho
+legLeft.add(tibiaLeft);
 
-// Posicionar a tíbia esquerda
-tibiaLeft.position.set(-0.35, -2.5, 0); // Abaixo do joelho esquerdo
+// Junta do tornozelo (esfera)
+const ankleJointLeftGeometry = new THREE.SphereGeometry(0.15, 16, 16); // Tamanho do tornozelo
+const ankleJointLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const ankleLeftJoint = new THREE.Mesh(ankleJointLeftGeometry, ankleJointLeftMaterial);
+ankleLeftJoint.position.y = 1.1; // Posição do tornozelo abaixo da tíbia
+ankleLeftJoint.position.x = -0.6; // Alinhar com a tíbia
+legLeft.add(ankleLeftJoint);
 
-// Adicionar à cena
-scene.add(tibiaLeft);
-
-
-// Criar a tíbia direita (da junta do joelho direito até o tornozelo)
-const tibiaRightGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 32); // Cilindro reto para a tíbia
-const tibiaRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor branca para o osso
-const tibiaRight = new THREE.Mesh(tibiaRightGeometry, tibiaRightMaterial);
-
-// Posicionar a tíbia direita
-tibiaRight.position.set(0.35, -2.5, 0); // Abaixo do joelho direito
-
-// Adicionar à cena
-scene.add(tibiaRight);
-
-// Criar a junta do tornozelo esquerdo
-const ankleLeftGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Esfera para o tornozelo
-const ankleLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffc0cb }); // Cor rosa claro para destaque
-const ankleLeft = new THREE.Mesh(ankleLeftGeometry, ankleLeftMaterial);
-
-// Posicionar a junta do tornozelo esquerdo
-ankleLeft.position.set(-0.35, -3.05, 0); // Alinhado com o final da tíbia esquerda
-
-// Adicionar à cena
-scene.add(ankleLeft);
-
-
-// Criar a junta do tornozelo direito
-const ankleRightGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Esfera para o tornozelo
-const ankleRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffc0cb }); // Cor rosa claro para destaque
-const ankleRight = new THREE.Mesh(ankleRightGeometry, ankleRightMaterial);
-
-// Posicionar a junta do tornozelo direito
-ankleRight.position.set(0.35, -3.05, 0); // Alinhado com o final da tíbia direita
-
-// Adicionar à cena
-scene.add(ankleRight);
-
-// Criar o pé esquerdo
-const footLeftGeometry = new THREE.BoxGeometry(0.35, 0.02, 0.7); // Retângulo para o pé
-const footLeftMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor branca para o osso
+// Pé (caixa)
+const footLeftGeometry = new THREE.BoxGeometry(0.6, 0.2, 0.3); // Tamanho do pé
+const footLeftMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
 const footLeft = new THREE.Mesh(footLeftGeometry, footLeftMaterial);
+footLeft.position.y = 0.9; // Posição do pé abaixo do tornozelo
+footLeft.position.x = -0.6; // Alinhar com o tornozelo
+footLeft.position.z = 0.2; // Leve deslocamento para frente (natural para o pé)
+legLeft.add(footLeft);
 
-// Posicionar o pé esquerdo
-footLeft.position.set(-0.35, -3.15, 0.3); // Abaixo da junta do tornozelo esquerdo e ligeiramente à frente
+// Adicionar a perna à cena
+scene.add(legLeft);
 
-// Adicionar à cena
-scene.add(footLeft);
+// Criação da perna direita
+const legRight = new THREE.Group(); // Grupo para conter todas as partes da perna direita
 
+// Junta da anca (esfera)
+const hipJointRightGeometry = new THREE.SphereGeometry(0.2, 16, 16); // Tamanho da anca
+const hipJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const hipJointRight = new THREE.Mesh(hipJointRightGeometry, hipJointRightMaterial);
+hipJointRight.position.y = 4.3; // Posição inicial da junta da anca
+hipJointRight.position.x = 0.6; // Ajustar para o lado direito
+legRight.add(hipJointRight);
 
-// Criar o pé direito
-const footRightGeometry = new THREE.BoxGeometry(0.35, 0.02, 0.7); // Retângulo para o pé
-const footRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Cor branca para o osso
+// Fêmur (cilindro)
+const femurRightGeometry = new THREE.CylinderGeometry(0.15, 0.12, 1.5, 32); // Fêmur
+const femurRightMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const femurRight = new THREE.Mesh(femurRightGeometry, femurRightMaterial);
+femurRight.position.y = 3.4; // Posicionar o fêmur abaixo da junta da anca
+femurRight.position.x = 0.6; // Manter alinhado com a junta
+legRight.add(femurRight);
+
+// Junta do joelho (esfera)
+const kneeJointRightGeometry = new THREE.SphereGeometry(0.2, 16, 16); // Tamanho do joelho
+const kneeJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const kneeJointRight = new THREE.Mesh(kneeJointRightGeometry, kneeJointRightMaterial);
+kneeJointRight.position.y = 2.65; // Posição do joelho abaixo do fêmur
+kneeJointRight.position.x = 0.6; // Alinhar com o fêmur
+legRight.add(kneeJointRight);
+
+// Tíbia (canela - cilindro)
+const tibiaRightGeometry = new THREE.CylinderGeometry(0.12, 0.1, 1.5, 32); // Tíbia
+const tibiaRightMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
+const tibiaRight = new THREE.Mesh(tibiaRightGeometry, tibiaRightMaterial);
+tibiaRight.position.y = 1.85; // Posicionar a tíbia abaixo do joelho
+tibiaRight.position.x = 0.6; // Alinhar com o joelho
+legRight.add(tibiaRight);
+
+// Junta do tornozelo (esfera)
+const ankleJointRightGeometry = new THREE.SphereGeometry(0.15, 16, 16); // Tamanho do tornozelo
+const ankleJointRightMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Laranja
+const ankleJointRight = new THREE.Mesh(ankleJointRightGeometry, ankleJointRightMaterial);
+ankleJointRight.position.y = 1.1; // Posição do tornozelo abaixo da tíbia
+ankleJointRight.position.x = 0.6; // Alinhar com a tíbia
+legRight.add(ankleJointRight);
+
+// Pé (caixa)
+const footRightGeometry = new THREE.BoxGeometry(0.6, 0.2, 0.3); // Tamanho do pé
+const footRightMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Cinza
 const footRight = new THREE.Mesh(footRightGeometry, footRightMaterial);
+footRight.position.y = 0.9; // Posição do pé abaixo do tornozelo
+footRight.position.x = 0.6; // Alinhar com o tornozelo
+footRight.position.z = 0.2; // Leve deslocamento para frente (natural para o pé)
+legRight.add(footRight);
 
-// Posicionar o pé direito
-footRight.position.set(0.35, -3.15, 0.3); // Abaixo da junta do tornozelo direito e ligeiramente à frente
-
-// Adicionar à cena
-scene.add(footRight);
-
-
-// Criar os controles de órbita
-const controls = new OrbitControls(camera, renderer.domElement);
+// Adicionar a perna direita à cena
+scene.add(legRight);
 
 // Função de animação
 function animate() {
   requestAnimationFrame(animate);
-  controls.update(); // Atualizar os controles
+
+  // Rotação para visualização
+  head.rotation.y += 0.01;
+
+  controls.update(); // Atualiza os controles Orbit
   renderer.render(scene, camera);
 }
 
-animate();
+// Raycaster e vetor do mouse
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
-// Responsividade
+// Array com todas as partes do esqueleto (ossos)
+const bones = [head, spine, shoulderLeft, upperArmLeft, elbowJointLeft, forearmLeft, wristJointLeft, handLeft, 
+               shoulderRight, upperArmRight, elbowJointRight, forearmRight, wristJointRight, handRight,
+               hipJointLeft, femurLeft, kneeLeftJoint, tibiaLeft, ankleLeftJoint, footLeft,
+               hipJointRight, femurRight, kneeJointRight, tibiaRight, ankleJointRight, footRight];
+
+// Evento de movimento do mouse
+window.addEventListener('mousemove', (event) => {
+  // Normalizar as coordenadas do mouse
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  // Atualizar o raycaster com a posição do mouse
+  raycaster.setFromCamera(mouse, camera);
+
+  // Calcular interseções com os objetos
+  const intersects = raycaster.intersectObjects(bones);
+
+  // Restaurar a cor original de todos os ossos
+  bones.forEach((bone) => {
+    bone.material.color.set(0x808080); // Cinza (cor padrão)
+  });
+
+  // Alterar a cor do osso destacado
+  if (intersects.length > 0) {
+    const highlightedBone = intersects[0].object;
+    highlightedBone.material.color.set(0xff0000); // Vermelho
+  }
+});
+
+// Ajusta o tamanho do renderer ao redimensionar a janela
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-//Raycaster
-const raycaster = new THREE.Raycaster();
-
-document.addEventListener('mousedown', onMouseDown);
-
-function onMouseDown(event) {
-  //mouse coords
-  const coords = new THREE.Vector2(
-    (event.clientX / window.innerWidth) * 2 - 1,
-    -((event.clientY / window.innerHeight) * 2 - 1),
-  );
-  raycaster.setFromCamera(coords, camera);
-
-  const intersects = raycaster.intersectObjects(scene.children, true);
-  if (intersects.length > 0) {
-    const selectedObject = intersects[0].object;
-    const color = new THREE.Color(0xff0000); // Cor vermelha
-    selectedObject.material.color = color;
-    console.log(`Objeto selecionado: ${selectedObject.name}`);
-  }
-}
+// Inicia a animação
+animate();
