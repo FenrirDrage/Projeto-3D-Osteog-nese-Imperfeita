@@ -39,9 +39,15 @@ scene.add(gridHelper);
 const axesHelper = new THREE.AxesHelper(5); // Tamanho dos eixos
 scene.add(axesHelper);
 
+// Carregar Textura
+const textureLoader = new THREE.TextureLoader();
+const skullTexture = textureLoader.load('/assets/skull.jpg'); // Carregar a textura do crânio
+const skullMaterial = new THREE.MeshStandardMaterial({ map: skullTexture }); // Material com textura
+
 // Cabeça (crânio)
 const headGeometry = new THREE.SphereGeometry(0.4, 32, 32); // Tamanho e resolução
-const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Material branco
+//const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Material branco
+const headMaterial = skullMaterial; // Usar o material com textura
 const head = new THREE.Mesh(headGeometry, headMaterial);
 head.position.y = 8; // Eleva a cabeça para não ficar no nível do chão
 scene.add(head); // Adiciona a cabeça à cena
@@ -316,8 +322,14 @@ scene.add(legRight);
 function animate() {
   requestAnimationFrame(animate);
 
-  // Rotação para visualização
-  head.rotation.y += 0.01;
+  // Atualizar a escala do osso pulsante
+  if (pulsingBone) {
+    pulseScale += pulseSpeed * pulseDirection;
+    if (pulseScale > maxPulseScale || pulseScale < minPulseScale) {
+      pulseDirection *= -1; // Invert the direction
+    }
+    pulsingBone.scale.set(pulseScale, pulseScale, pulseScale);
+  }
 
   controls.update(); // Atualiza os controles Orbit
   renderer.render(scene, camera);
@@ -328,10 +340,11 @@ const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 // Array com todas as partes do esqueleto (ossos)
-const bones = [head, spine, shoulderLeft, upperArmLeft, elbowJointLeft, forearmLeft, wristJointLeft, handLeft, 
-               shoulderRight, upperArmRight, elbowJointRight, forearmRight, wristJointRight, handRight,
-               hipJointLeft, femurLeft, kneeLeftJoint, tibiaLeft, ankleLeftJoint, footLeft,
-               hipJointRight, femurRight, kneeJointRight, tibiaRight, ankleJointRight, footRight];
+const bones = [head, upperArmLeft, forearmLeft, handLeft, 
+               upperArmRight, forearmRight, handRight, pelvis,
+               femurLeft, tibiaLeft, footLeft,
+               femurRight, tibiaRight, footRight,
+              ];           
 
 // Evento de movimento do mouse
 window.addEventListener('mousemove', (event) => {
@@ -347,7 +360,11 @@ window.addEventListener('mousemove', (event) => {
 
   // Restaurar a cor original de todos os ossos
   bones.forEach((bone) => {
+    if (bone.material) {
     bone.material.color.set(0x808080); // Cinza (cor padrão)
+    } else { 
+      console.warn('Bone is undefined', bone)// Se o material não existir, é um grupo
+       }
   });
 
   // Alterar a cor do osso destacado
@@ -357,6 +374,101 @@ window.addEventListener('mousemove', (event) => {
   }
 });
 
+let pulsingBone = null;
+let pulseDirection = 1;
+let pulseScale = 1;
+const pulseSpeed = 0.01;
+const maxPulseScale = 1.2;
+const minPulseScale = 0.8;
+let originalColor = new THREE.Color();
+let orignalScale = new THREE.Vector3();
+
+// Evento de clique do mouse
+window.addEventListener('click', (event) => {
+  // Normalizar as coordenadas do mouse
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  // Atualizar o raycaster com a posição do mouse
+  raycaster.setFromCamera(mouse, camera);
+
+  // Calcular interseções com os objetos
+  const intersects = raycaster.intersectObjects(bones, true); // Enable recursive checking
+
+  // Definir o osso pulsante
+  if (intersects.length > 0) {
+    pulsingBone = intersects[0].object;
+    pulseScale = 1; // Reset the scale
+    originalColor.copy(pulsingBone.material.color); // Save the original color
+    orignalScale.copy(pulsingBone.scale); // Save the original scale
+  }
+});
+
+// Função de animação
+function animatePulsing() {
+  requestAnimationFrame(animatePulsing);
+
+  // Atualizar a escala do osso pulsante
+  if (pulsingBone) {
+    pulseScale += pulseSpeed * pulseDirection;
+    if (pulseScale > maxPulseScale || pulseScale < minPulseScale) {
+      pulseDirection *= -1; // Invert the direction
+    }
+    pulsingBone.scale.set(pulseScale, pulseScale, pulseScale);
+
+    // Interpolate the color from original to red
+    const t = (pulseScale - minPulseScale) / (maxPulseScale - minPulseScale);
+    pulsingBone.material.color.lerpColors(originalColor, new THREE.Color(0xff0000), t);
+  }
+
+  // Rotação para visualização
+  head.rotation.y += 0.01;
+
+  controls.update(); // Atualiza os controles Orbit
+  renderer.render(scene, camera);
+}
+
+// Variável para alternar o estado de movimento
+let isWalking = false;
+let walkingSpeed = 0.05; // Velocidade de animação
+let legAngle = 0; // Ângulo inicial
+
+// Função para animar o movimento de andar
+function animateWalking() {
+  function walk() {
+    if (!isWalking) return; // Interrompe a animação se não estiver no estado "andar"
+
+    // Movimento cíclico baseado em seno para criar um movimento natural
+    legAngle += walkingSpeed;
+
+    // Simular movimento da anca (subida e descida leve)
+    //legRight.position.y = 0.1 * Math.sin(legAngle * 2) + 4; // Subida/descida da perna
+
+    // Movimento do fémur (rotações)
+    femurRight.rotation.x = Math.sin(legAngle) * 0.5; // Movimento da coxa
+    tibiaRight.rotation.x = Math.max(-Math.sin(legAngle) * 0.5, 0); // Movimento do joelho
+
+    // Perna esquerda (movimento oposto)
+    femurLeft.rotation.x = -Math.sin(legAngle) * 0.5; // Movimento da coxa
+    tibiaLeft.rotation.x = Math.max(Math.sin(legAngle) * 0.5, 0); // Movimento do joelho
+
+    // Movimento do pé (levantar/descer ao andar)
+    footRight.rotation.x = -Math.sin(legAngle) * 0.3;
+    footLeft.rotation.x = Math.sin(legAngle) * 0.3;
+
+    // Chamar continuamente a próxima frame
+    requestAnimationFrame(walk);
+  }
+
+  walk(); // Inicia o ciclo de animação
+}
+
+// Função para parar o movimento
+function stopWalking() {
+  // Aqui podes resetar posições, parar animações ou adicionar lógica necessária
+  hipJointRight.rotation.z = 0; // Reset do movimento
+}
+
 // Ajusta o tamanho do renderer ao redimensionar a janela
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -364,5 +476,31 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Evento de pressionar tecla
+window.addEventListener('keydown', (event) => {
+  if (event.code === 'Space') {
+    pulsingBone.scale.copy(orignalScale); // Restaurar a escala original
+    pulsingBone.material.color.copy(originalColor); // Restaurar a cor original
+    pulsingBone = null; // Parar o pulso do osso
+  }
+});
+
+// Função para iniciar/parar a animação de andar
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'w' || event.key === 'W') {
+    // Alternar o estado entre "andar" e "parar"
+    isWalking = !isWalking;
+
+    if (isWalking) {
+      console.log('Começou a andar');
+      animateWalking(); // Inicia a animação de andar
+    } else {
+      console.log('Parou de andar');
+      stopWalking(); // Para a animação
+    }
+  }
+});
+
 // Inicia a animação
 animate();
+animatePulsing();
